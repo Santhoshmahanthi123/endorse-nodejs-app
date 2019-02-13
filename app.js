@@ -13,6 +13,7 @@ app.use(bodyParser.json());
 app.get('/',(req,res)=>{
     res.send('home');
 })
+//API to create user
 app.post('/user',(req,res)=>{
     const user = new User({
         _id : new mongoose.Types.ObjectId(),
@@ -35,7 +36,7 @@ app.post('/user',(req,res)=>{
         });
     });
 });
-
+//api to get all the users
 app.get('/user', (req,res) => {
     User.find()
     .exec()
@@ -53,6 +54,7 @@ app.get('/user', (req,res) => {
     });
 })
 
+//api to post a blog/article
 app.post('/blog',(req, res) => {
  
     const blog = new Blog ({
@@ -77,7 +79,9 @@ app.post('/blog',(req, res) => {
         });
     });
 });
-app.get('/blog', (req,res) => {
+
+//api to get all the blogs
+app.get('/blogs', (req,res) => {
     Blog.find()
     .exec()
     .then(result => {
@@ -93,42 +97,49 @@ app.get('/blog', (req,res) => {
         });
     });
 })
+
+//api to save user and blog information who are visiting a particular blog based on user and blog ids
 app.post('/visit',(req,res)=>{
-    Blog.findById(req.body.blogId)
-    .then(blog => {
-        if(!blog){
-            return res.status(404).json({
-                message : 'Blog not found!'
+    User.findById(req.body.user)
+    .exec()
+    .then(user=>{
+        Blog.findById(req.body.blog) 
+        .exec()
+        .then(result=>{
+            const visit = new Visit({
+                _id: mongoose.Types.ObjectId(),
+                user :req.body.user,
+                blog : req.body.blog
             });
-        }
-        const visit = new Visit({
-            _id: mongoose.Types.ObjectId(),
-            blog:req.body.blogId,
-            user : req.body.userId
+           visit
+           .save() 
+           res.status(200).json({
+                        message : 'Visit is stored!',
+                        createdVisit : visit
+                      
+                    });
+            })
+        .catch(err => {
+            console.log(err);
+            res.status(500).json({
+                error : err,
+            });
         });
-       return blog.save() 
-        
+
     })
-    .then(result=>{
-        console.log(result);
-        res.status(201).json({
-            message : 'Visit is stored!',
-            createdVrder :{
-                _id:result._id,
-                blog: result.title,
-                user : result.name
-            },
-          
-        });
-    })
-    .catch(err =>{
+    
+    .catch(err => {
         console.log(err);
         res.status(500).json({
             error : err
         });
-    }); 
-});
-app.get('/visit', (req,res) => {
+        
+    });
+   
+})
+
+//api to get all the visits made bu users
+app.get('/visits', (req,res) => {
     Visit.find()
     .exec()
     .then(result => {
@@ -145,6 +156,45 @@ app.get('/visit', (req,res) => {
     });
 })
 
+//api to get the count based on no:of times a particular user visits a particular blog 
+app.get('/blog', (req,res) => {
+    Visit.find({user:req.body.user,blog:req.body.blog,date: { $gte: new Date('2019-02-13'), $lt: new Date('2020-02-13') }})
+    .exec()
+    .then(result => {
+        console.log(result); 
+        res.json({
+            'no of times the given user visited blog is' : result.length,
+            visit : result
+        });
+    })
+    .catch(err => {
+        console.log(err);
+        res.status(500).json({
+            error : err
+        });
+    });
+})
+
+// api to get the number of distinct or unique users visted the given blog
+app.get('/unique', (req,res) => {
+    Visit.find({blog:req.body.blog,date: { $gte: new Date('2019-02-13'), $lt: new Date('2020-02-13') }})
+    .exec()
+    .then(result => {
+        console.log(result)
+        let unique = [...new Set(result.map(item => item.user))];
+        console.log(unique);
+        res.json({
+            'no of users visited the given blog is' : unique.length,
+            'These are  the user ids visited the current blog' : unique
+        });
+    })
+    .catch(err => {
+        console.log(err);
+        res.status(500).json({
+            error : err
+        });
+    });
+})
 app.listen(port,()=>{
     console.log(`app started on port:${port}`);
 })
